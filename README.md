@@ -2,41 +2,82 @@
 Building image classification models using little data.
 
 ## Get Started
-
-    git init
-    python3 -m venv venv
-    source venv/bin/activate
-    pip install -r requirements.txt
-    dvc init
-    git status
-        # new file:   .dvc/.gitignore
-        # new file:   .dvc/config
-        # new file:   .dvcignore
-        # new file:   .gitignore
-    git commit -m "Initialize DVC"
-
+```bash
+git init
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+dvc init
+git status
+    # new file:   .dvc/.gitignore
+    # new file:   .dvc/config
+    # new file:   .dvcignore
+    # new file:   .gitignore
+git commit -m "Initialize DVC"
+```
 ## Download data
 **dvc get** can download any file or directory tracked in a DVC repository (and stored remotely). It's like wget, but for DVC or Git repos.
 
-    dvc get https://github.com/iterative/dataset-registry \
-            tutorials/versioning/data.zip
+```bash
+dvc get https://github.com/iterative/dataset-registry \
+        tutorials/versioning/data.zip
+unzip -q data.zip
+rm -f data.zip
+dvc add data
+git add data.dvc .gitignore
+```
+## Storing and sharing
 
-    unzip -q data.zip
-    rm -f data.zip
-    dvc add data
-    git add data.dvc .gitignore
+```bash
+# pip install 'dvc[gdrive]'
+# dvc remote add -d storage gdrive://...
+dvc remote add -d myremote /tmp/dvcstore
+dvc push
+git add .dvc/config
+dvc remote list
+	# myremote        /tmp/dvcstore
+git commit -m "Configure local remote"
+```
+
+# How can we use these artifacts outside of the project?
+## List files and directories
+```bash
+dvc list https://github.com/iterative/dataset-registry get-started
+```
+## Download
+```bash
+dvc get https://github.com/iterative/dataset-registry use-cases/cats-dogs
+```
+## Import to yout project
+```bash
+dvc import https://github.com/iterative/dataset-registry \
+             use-cases/cats-dogs -o data/cats-dogs
+```
+## Python API
+
+It's also possible to integrate your data or models directly in source code with DVC's Python API. This lets you access the data contents directly from within an application at runtime. For example:
+```python
+import dvc.api
+
+with dvc.api.open(
+    'get-started/data.xml',
+    repo='https://github.com/iterative/dataset-registry'
+) as fd:
+    # fd is a file descriptor which can be processed normally
+```
 
 ## Pipeline
 
-    dvc stage add -n featurize -d src/featurization.py -d data \
-        -p featurize.img_width,featurize.img_height \
-        -p featurize.nb_validation_samples,featurize.batch_size \
-        -o bottleneck_features_train.npy \
-        -o bottleneck_features_validation.npy \
-        python src/featurization.py data/
-
-    dvc repro
-
+```bash
+dvc stage add -n featurize -d src/featurization.py -d data \
+    -p featurize.img_width,featurize.img_height \
+    -p featurize.nb_validation_samples,featurize.batch_size \
+    -o bottleneck_features_train.npy \
+    -o bottleneck_features_validation.npy \
+    python src/featurization.py data/
+dvc dag
+dvc repro
+```
 A dvc.yaml file is generated. It includes information about the command we want to run (python src/prepare.py data/data.xml), its dependencies, and outputs.
 
 The command options used above mean the following:
@@ -52,49 +93,50 @@ The command options used above mean the following:
 The last line, python src/prepare.py data/data.xml is the command to run in this stage, and it's saved to dvc.yaml, as shown below.
 
 By using dvc stage add multiple times, and specifying outputs of a stage as dependencies of another one, we can describe a sequence of commands which gets to a desired result. This is what we call a data pipeline or dependency graph.
-          
-    dvc run -n train -d src/train.py -d features/ \
-        -p train.epochs,featurize.nb_validation_samples,featurize.batch_size \
-        -o model.h5 -M evaluation.json \
-        python src/train.py features/
 
-    dvc metrics show
-
-## Visualize pipeline
-Having built our pipeline, we need a good way to understand its structure. Seeing a graph of connected stages would help. DVC lets you do so without leaving the terminal!
-
-    dvc dag
-
+```bash
+dvc run -n train -d src/train.py -d features/ \
+    -p train.epochs,featurize.nb_validation_samples,featurize.batch_size \
+    -o model.h5 -M evaluation.json \
+    python src/train.py features/
+dvc dag
+dvc metrics show
+```
 
 ## Making changes
 
-    dvc get https://github.com/iterative/dataset-registry \
-            tutorials/versioning/new-labels.zip
-    unzip -q new-labels.zip
-    rm -f new-labels.zip
-    dvc add data
-    git add data.dvc model.h5.dvc metrics.csv
-    git commit -m "Second model, trained with 2000 images"
-    git tag -a "v2.0" -m "model v2.0, 2000 images"
+```bash
+dvc get https://github.com/iterative/dataset-registry \
+        tutorials/versioning/new-labels.zip
+unzip -q new-labels.zip
+rm -f new-labels.zip
+dvc add data
+git add data.dvc model.h5.dvc metrics.csv
+git commit -m "Second model, trained with 2000 images"
+git tag -a "v2.0" -m "model v2.0, 2000 images"
+```
 
 The whole point of creating this dvc.yaml file is the ability to easily reproduce a pipeline:
 command can be used to compare this state with an actual state of the workspace.
-``` bash
+
+```bash
 dvc status 
 dvc params diff
 dvc metrics diff
 dvc plots diff
 ```
 
-## Switching between workspace versions
+## Switching between versions
 
-    git checkout v1.0
-    dvc checkout
-
+```bash
+git checkout v1.0
+dvc checkout
+```
 On the other hand, if we want to keep the current code, but go back to the previous dataset version, we can target specific data, like this:
 
-    git checkout v1.0 data.dvc
-    dvc checkout data.dvc
-
+```bash
+git checkout v1.0 data.dvc
+dvc checkout data.dvc
+```
 https://dvc.org/doc/use-cases/versioning-data-and-model-files/tutorial
 https://blog.keras.io/building-powerful-image-classification-models-using-very-little-data.html
