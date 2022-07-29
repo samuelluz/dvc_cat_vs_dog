@@ -72,11 +72,12 @@ with dvc.api.open(
 dvc stage add -n featurize -d src/featurization.py -d data \
     -p featurize.img_width,featurize.img_height \
     -p featurize.nb_validation_samples,featurize.batch_size \
-    -o bottleneck_features_train.npy \
-    -o bottleneck_features_validation.npy \
+    -o features/bottleneck_features_train.npy \
+    -o features/bottleneck_features_validation.npy \
     python src/featurization.py data/
 dvc dag
 dvc repro
+git status
 ```
 A dvc.yaml file is generated. It includes information about the command we want to run (python src/prepare.py data/data.xml), its dependencies, and outputs.
 
@@ -97,10 +98,24 @@ By using dvc stage add multiple times, and specifying outputs of a stage as depe
 ```bash
 dvc run -n train -d src/train.py -d features/ \
     -p train.epochs,featurize.nb_validation_samples,featurize.batch_size \
-    -o model.h5 -M evaluation.json \
+    -o model.h5 \
     python src/train.py features/
+
+dvc run -n evaluate -d src/evaluation.py -d model.h5 -d features/ \
+    -p featurize.nb_validation_samples \
+    -M validation_metrics.csv \
+    -M train_metrics.csv \
+    python src/evaluation.py model.h5 features/
+
 dvc dag
 dvc metrics show
+dvc exp run --set-param train.epochs=50
+```
+
+```bash
+git add data.dvc model.h5.dvc metrics.csv .gitignore
+git commit -m "First model, trained with 1000 images"
+git tag -a "v1.0" -m "model v1.0, 1000 images"
 ```
 
 ## Making changes
@@ -112,6 +127,7 @@ unzip -q new-labels.zip
 rm -f new-labels.zip
 dvc add data
 git add data.dvc model.h5.dvc metrics.csv
+dvc repro
 git commit -m "Second model, trained with 2000 images"
 git tag -a "v2.0" -m "model v2.0, 2000 images"
 ```
@@ -130,6 +146,8 @@ dvc plots diff
 
 ```bash
 git checkout v1.0
+dvc checkout
+git checkout v2.0
 dvc checkout
 ```
 On the other hand, if we want to keep the current code, but go back to the previous dataset version, we can target specific data, like this:
