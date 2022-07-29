@@ -36,6 +36,10 @@ dvc push
 git add .dvc/config
 dvc remote list
 	# myremote        /tmp/dvcstore
+rm -rf data/
+rm -rf .dvc/cache
+dvc pull
+
 git commit -m "Configure local remote"
 ```
 
@@ -98,14 +102,9 @@ By using dvc stage add multiple times, and specifying outputs of a stage as depe
 ```bash
 dvc run -n train -d src/train.py -d features/ \
     -p train.epochs,featurize.nb_validation_samples,featurize.batch_size \
+    -M evaluation_train.json \
     -o model.h5 \
     python src/train.py features/
-
-dvc run -n evaluate -d src/evaluation.py -d model.h5 -d features/ \
-    -p featurize.nb_validation_samples \
-    -M validation_metrics.csv \
-    -M train_metrics.csv \
-    python src/evaluation.py model.h5 features/
 
 dvc dag
 dvc metrics show

@@ -6,13 +6,12 @@ import yaml
 
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dropout, Flatten, Dense
-# from tensorflow.keras.callbacks import CSVLogger
 from dvclive.keras import DvcLiveCallback
 from tqdm.keras import TqdmCallback
 
 if len(sys.argv) != 2:
     sys.stderr.write("Arguments error. Usage:\n")
-    sys.stderr.write("\tpython train_tensorflow.py data-file-path\n")
+    sys.stderr.write("\tpython train.py data-file-path\n")
     sys.exit(1)
 
 pathname = os.path.dirname(sys.argv[0])
@@ -60,6 +59,7 @@ def train_top_model():
               batch_size=batch_size,
               validation_data=(validation_data, validation_labels),
               verbose=0,
-              callbacks=[TqdmCallback(), DvcLiveCallback(path="evaluation", model_file=top_model_weights_path, save_weights_only=True)])
+              callbacks=[TqdmCallback(), DvcLiveCallback(path="evaluation_train")])
+    model.save(top_model_weights_path)
 
 train_top_model()
